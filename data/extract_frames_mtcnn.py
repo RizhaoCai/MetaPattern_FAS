@@ -11,7 +11,7 @@ import zip_helper
 from multiprocessing import Pool
 # switch the SPLIT_SVM/SVM/CNN detector
 import sys
-sys.path.append('/home/rizhao/code/mxnet_mtcnn_face_detection/')
+sys.path.append('/home/rizhao/code/mxnet_mtcnn_face_detection/') # You need to configure the path based on your installed MTCNN
 import mxnet_detector
 import sys
 from PIL import Image
@@ -19,27 +19,28 @@ from PIL import Image
 ext_ratio = 0.0
 DETECTOR = "SPLIT_SVM"
 
+ROOT_DIR = '/home/Dataset' # Where you save the raw data you download
+SAVE_DIR = '/home/rizhao/data/FAS/' # Where you want to save the processed data
 
 DATASET_DIR = {
-    'OULU-NPU': '/home/Dataset/OULU-NPU/*/*.avi',  #
-    'CASIA-FASD': '/home/Dataset/CASIA-FASD/*/*/*.avi',  #
-    'REPLAY-ATTACK': '/home/Dataset/REPLAY-ATTACK/*/*/*.mov',  #
-    'REPLAY-ATTACK-SPOOF': '/home/Dataset/REPLAY-ATTACK/*/*/*/*.mov',  #
-    'SIW': '/home/Dataset/SIW/*/*/*/*.mov',
-    'ROSE-YOUTU': '/home/Dataset/ROSE-YOUTU/*/*/*.mp4',  #
-    'MSU-MFSD': '/home/Dataset/MSU-MFSD/scene01/*/*.mp4',
-    'MSU-MFSD2': '/home/Dataset/MSU-MFSD/scene01/*/*.mov',
+    'OULU-NPU': 'OULU-NPU/*/*.avi',  #
+    'CASIA-FASD': 'CASIA-FASD/*/*/*.avi',  #
+    'REPLAY-ATTACK': 'REPLAY-ATTACK/*/*/*.mov',  #
+    'REPLAY-ATTACK-SPOOF': 'EPLAY-ATTACK/*/*/*/*.mov',  #
+    'SIW': 'SIW/*/*/*/*.mov',
+    'ROSE-YOUTU': 'ROSE-YOUTU/*/*/*.mp4',  #
+    'MSU-MFSD': 'MSU-MFSD/scene01/*/*.mp4',
+    'MSU-MFSD2': 'MSU-MFSD/scene01/*/*.mov',
 }
-DATASET_DIR_ROOT = '/home/rizhao/data/FAS/'
 
 
 
 
 def process_one_video(input_fn):
     # get the input_fn ext_ratio
-
-    output_fn = os.path.relpath(input_fn, '/home/Dataset')
-    output_fn = os.path.join(DATASET_DIR_ROOT, "MTCNN/align/+".format(ext_ratio) + output_fn + ".zip")
+    global ROOT_DIR
+    output_fn = os.path.relpath(input_fn, ROOT_DIR)
+    output_fn = os.path.join(SAVE_DIR, "MTCNN/align/+".format(ext_ratio) + output_fn + ".zip")
     output_folder_dir = os.path.dirname(output_fn)
     # import pdb; pdb.set_trace()
     print('input_fn: ', input_fn)
@@ -127,5 +128,4 @@ if __name__ == "__main__":
     print(dataset_name)
     if dataset_name in DATASET_DIR.keys():
         main(dataset_name)
-    # preprocess()
-    # single_test_case()
+   
