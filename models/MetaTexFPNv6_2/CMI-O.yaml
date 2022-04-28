@@ -1,0 +1,23 @@
+DATA:
+  TARGET_DATA: data/data_list/OULU-NPU.csv
+  TRAIN_SRC_FAKE_1: data/data_list/MSU-MFSD-FAKE.csv
+  TRAIN_SRC_FAKE_2: data/data_list/CASIA-ALL-FAKE.csv
+  TRAIN_SRC_FAKE_3: data/data_list/REPLAY-ALL-FAKE.csv
+
+  TRAIN_SRC_REAL_1: data/data_list/MSU-MFSD-REAL.csv
+  TRAIN_SRC_REAL_2: data/data_list/CASIA-ALL-REAL.csv
+  TRAIN_SRC_REAL_3: data/data_list/REPLAY-ALL-REAL.csv
+  BATCH_SIZE: 4
+
+
+TRAIN:
+  INIT_LR: 0.0001
+  VAL_FREQ: 2
+  EPOCHS: 200
+  NUM_FRAMES: 2
+  INNER_LOOPS: 4
+TEST:
+  NUM_FRAMES: 2
+
+
+OUTPUT_DIR: output/MP_HFN/CMI-O/NF2_InnerLoops4
