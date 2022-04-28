@@ -1,6 +1,5 @@
 """
-  MetaTexFPNv6_2 is based on MetaTexFPNv6_1.
-  Difference: it uses the conv with kernel=3
+  HFN_MP: Hierachical Fusion Network and Metta Pattern 
 
 """
 from .trainer import Trainer
