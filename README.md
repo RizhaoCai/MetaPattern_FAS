@@ -1,6 +1,7 @@
 # MetaPattern_FAS
-The code repo for the paper Learning Meta Pattern for Face Anti-Spoofing, IEEE TIFS 2022
+The code repo for the paper ["Learning Meta Pattern for Face Anti-Spoofing", IEEE TIFS 2022](https://ieeexplore.ieee.org/document/9732458)   /  [(ArXiv version)](https://arxiv.org/pdf/2110.06753.pdf). 
 
+![im](./img/1.png)
 # Steps for reproduction
 ## Data extraction
 1. Please download the datasets you need. Due to the license, I cannot redistribute the datasets. You have to download the datasets by submitting your requests. The links for downloading the datasets can be found in  https://github.com/RizhaoCai/Awesome-FAS.
