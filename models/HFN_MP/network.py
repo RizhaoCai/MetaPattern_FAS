@@ -295,8 +295,8 @@ def test():
 
 def get_state_dict():
     print('Loading pretrained ResNet50 model..')
-    pretrained_model_path = 'models/fpn/resnet50.pth'
-    save_model_path = 'models/MetaTexFPNv6_1/net.pth'
+    pretrained_model_path = 'models/resnet50_imagnet_pretrain.pth'
+    save_model_path = 'models/HFN_MP/hfn_pretrain.pth'
 
     d = torch.load(pretrained_model_path)
 

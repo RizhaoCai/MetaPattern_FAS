@@ -10,7 +10,7 @@ from models.base import BaseTrainer
 from utils.utils import AverageMeter
 from .dataset import get_data_loader
 from .network import HierachicalFusionNetwork
-from .network import PatternExtractor
+from .network import PatternExtractor, get_state_dict
 from itertools import chain
 
 #try:
@@ -105,8 +105,12 @@ class Trainer(BaseTrainer):
 
 
         if self.config.TRAIN.IMAGENET_PRETRAIN:
+            
+            pretrain_model_path = 'models/HFN_MP/hfn_pretrain.pth'
             logging.info("Loading ImageNet Pretrain")
-            imagenet_pretrain = torch.load('models/MetaTexFPNv6_1/net.pth')
+            if not os.path.exists(pretrain_model_path):
+                get_state_dict() 
+            imagenet_pretrain = torch.load(pretrain_model_path)
             self.hfn.load_state_dict(imagenet_pretrain, strict=False)
 
         self.hfn.train()
