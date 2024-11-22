@@ -15,10 +15,9 @@ from data.transforms import get_augmentation_transforms
 from data.zip_dataset import ZipDataset as _ZipDataset
 import functools
 
-
-class ZipDataset_(torch.utils.data.Dataset):
-    def __init__(self, zip_file_path, face_label, transforms=None, num_frames=1, train=True):
-        self.zip_file_path = zip_file_path
+class ZipDataset(torch.utils.data.Dataset):
+    def __init__(self, folder_path, face_label, transforms=None, num_frames=1, train=True):
+        self.folder_path = folder_path
         self.decode_flag = cv2.IMREAD_UNCHANGED
         self.train = train
         self.face_label = face_label
@@ -40,36 +39,28 @@ class ZipDataset_(torch.utils.data.Dataset):
         else:
             self.transforms = transforms
 
+        self.image_list = []
+        exts = ['png', 'jpg']
+        for ext in exts:
+            self.image_list += list(filter(lambda x: x.lower().endswith(ext), os.listdir(folder_path)))
 
-        self.image_list_in_zip = []
-        with zipfile.ZipFile(self.zip_file_path, "r") as zip:
-            lst = zip.namelist()
-            exts = ['png', 'jpg']
-            for ext in exts:
-                self.image_list_in_zip += list(filter(lambda x: x.lower().endswith(ext), lst))
-
-        if len(self.image_list_in_zip) > 0:
-            self.image_list_in_zip = self.image_list_in_zip[:num_frames]
-        self.len = len(self.image_list_in_zip)
-
-
-
-    def __read_image_from_zip__(self, index):
-        image_name_in_zip = self.image_list_in_zip[index]
-        with zipfile.ZipFile(self.zip_file_path, "r") as zip:
-            bytes_ = zip.read(image_name_in_zip)
-            bytes_ = np.frombuffer(bytes_, dtype=np.uint8)
-            im = cv2.imdecode(bytes_, self.decode_flag)  # cv2 image
-            im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
-            im = cv2.resize(im, (256,256))
-            im =  Image.fromarray(im)
-            return im# F.to_tensor(im)
-
+        if len(self.image_list) > 0:
+            self.image_list = self.image_list[:num_frames]
+        self.len = len(self.image_list)
+    
+    def __read_image__(self, index):
+        image_name = self.image_list[index]
+        image_path = os.path.join(self.folder_path, image_name)
+        
+        im = cv2.imread(image_path, self.decode_flag) 
+        im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
+        im = cv2.resize(im, (256, 256))
+        im = Image.fromarray(im)
+        return im        
 
 
     def __getitem__(self, index):
-
-        im = self.__read_image_from_zip__(index)
+        im = self.__read_image__(index)
         tensor = self.transforms(im)
         # print(tensor.shape)
         tensor = tensor.to(torch.float)
@@ -77,7 +68,7 @@ class ZipDataset_(torch.utils.data.Dataset):
             'face_label': self.face_label,
             'depth': self.face_label*torch.ones([1,32,32,], dtype=torch.float32)
         }
-        return index, tensor, target, self.zip_file_path
+        return index, tensor, target, self.folder_path
 
     def __len__(self):
         return self.len
@@ -85,26 +76,24 @@ class ZipDataset_(torch.utils.data.Dataset):
 
 
 class ZipDataset(_ZipDataset):
-    def __init__(self, zip_file_path, face_label, transform=None, num_frames=1, train=True):
-        _ZipDataset.__init__(self, zip_file_path, face_label, transform=transform, num_frames=num_frames)
+    def __init__(self, folder_path, face_label, transform=None, num_frames=1, train=True):
+        _ZipDataset.__init__(self, folder_path, face_label, transform=transform, num_frames=num_frames)
 
     def __getitem__(self, index):
-        index, tensor, target, self.zip_file_path = _ZipDataset.__getitem__(self, index)
+        index, tensor, target, self.folder_path = _ZipDataset.__getitem__(self, index)
         target['depth'] =  self.face_label * torch.ones([1, 32, 32, ], dtype=torch.float32)
-        return index, tensor, target, self.zip_file_path
+        return index, tensor, target, self.folder_path
 
 class ZipDatasetPixelMC(ZipDataset):
     """
         ZipDataset with Pixel-wise target (Multi channel)
     """
-
-    def __init__(self, zip_file_path, face_label, transform, num_frames=1000, config=None):
-        super(ZipDatasetPixelMC, self).__init__(zip_file_path, face_label, transform, num_frames)
+    def __init__(self, folder_path, face_label, transform, num_frames=1000, config=None):
+        super(ZipDatasetPixelMC, self).__init__(folder_path, face_label, transform, num_frames)
 
         self.config = config
     def __getitem__(self, index):
-
-        im = self.__read_image_from_zip__(index)
+        im = self.__read_image__(index)
         pixel_maps_size = 32
 
         pixel_maps_size = [32, 16, 8, 4, 2]
@@ -120,7 +109,7 @@ class ZipDatasetPixelMC(ZipDataset):
             'face_label': self.face_label,
             'pixel_maps': pixel_maps
         }
-        return index, channels, target, self.zip_file_path
+        return index, channels, target, self.folder_path
 
 
 def channel_list(bgr_im, config=None):
@@ -152,7 +141,6 @@ def channel_list(bgr_im, config=None):
 
 
 def get_dataset_from_list(data_list_path, dataset_cls, train=True, transform=None, num_frames=1, root_dir='', ):
-    # TODO: hard code it right now
     data_file_list, face_labels = parse_data_list(data_list_path)
 
     num_file = data_file_list.size
@@ -161,21 +149,19 @@ def get_dataset_from_list(data_list_path, dataset_cls, train=True, transform=Non
     for i in range(num_file):
         face_label = int(face_labels.get(i)==0) # 0 means real face and non-zero represents spoof
         file_path = data_file_list.get(i)
-        # zip_path = os.path.join(file_path, root_path)
-        zip_path = root_dir + file_path
-        if not os.path.exists(zip_path):
-            logging.warning("Skip {} (not exists)".format(zip_path))
+        total_path = os.path.join(file_path, root_dir)
+        if not os.path.exists(total_path):
+            logging.warning("Skip {} (not exists)".format(total_path))
             continue
         else:
-            dataset = dataset_cls(zip_path, face_label, transform, num_frames=num_frames)
+            dataset = dataset_cls(total_path, face_label, transform, num_frames=num_frames)
             if len(dataset) == 0:
-                logging.warning("Skip {} (zero elements)".format(zip_path))
+                logging.warning("Skip {} (zero elements)".format(total_path))
                 continue
             else:
                 dataset_list.append(dataset)
     final_dataset = torch.utils.data.ConcatDataset(dataset_list)
     return final_dataset
-
 
 def get_data_loader(config):
 
