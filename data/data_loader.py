@@ -11,13 +11,25 @@ import logging
 
 import pdb
 
-
 def parse_data_list(data_list_path):
-    csv = pd.read_csv(data_list_path, header=None)
-    data_list = csv.get(0)
-    face_labels = csv.get(1)
+    data_file_list = []
+    face_labels = []
 
-    return data_list, face_labels
+    with open(data_list_path, 'r') as f:
+        lines = f.readlines()
+
+    for line in lines:
+        line = line.strip()  # 줄바꿈 제거
+        if not line:  # 빈 줄 건너뜀
+            continue
+
+        file_path = line
+        face_label = 0 if 'live' in file_path.lower() else 1  # 'live'가 포함되면 0, 아니면 1
+
+        data_file_list.append(file_path)
+        face_labels.append(face_label)
+
+    return data_file_list, face_labels
 
 
 def get_dataset_from_list(data_list_path, dataset_cls, transform, num_frames=1000, root_dir=''):
@@ -30,15 +42,15 @@ def get_dataset_from_list(data_list_path, dataset_cls, transform, num_frames=100
     for i in range(num_file):
         face_label = int(face_labels.get(i)==0) # 0 means real face and non-zero represents spoof
         file_path = data_file_list.get(i)
-
-        zip_path = root_dir + file_path
-        if not os.path.exists(zip_path):
-            logging.warning("Skip {} (not exists)".format(zip_path))
+        
+        total_path = os.path.join(file_path, root_dir)
+        if not os.path.exists(total_path):
+            logging.warning("Skip {} (not exists)".format(total_path))
             continue
         else:
-            dataset = dataset_cls(zip_path, face_label, transform=transform, num_frames=num_frames)
+            dataset = dataset_cls(total_path, face_label, transform=transform, num_frames=num_frames)
             if len(dataset) == 0:
-                logging.warning("Skip {} (zero elements)".format(zip_path))
+                logging.warning("Skip {} (zero elements)".format(total_path))
                 continue
             else:
                 dataset_list.append(dataset)
