@@ -8,15 +8,63 @@ import zip_dataset
 from transforms import VisualTransform, get_augmentation_transforms
 import torchvision.transforms as transforms
 import logging
+import cv2
 
 import pdb
+
+def make_data_list(data_path):
+    """
+    1.FAS_data 하위의 모든 jpg 파일들을 아래와 같이 분류 합니다.
+      test = TEST
+      dev,train = TRAIN
+      live = REAL
+      spoof = FAKE
+    2.data_list 파일들의 내용은 아래와 같은 포맷으로 저장 됩니다.
+      file_path,face_label,height, width
+    3.예제의 ._로 시작하는 파일에는 오류를 발생합니다(이미지포맷이 지원하지 않음)
+      만일 ._ 파일을 사용해야하는 경우 주석을 참고하여 2개의 라인을 삭제하세요.
+    """
+    root_dir = "FAS_data"
+    for root, _, files in os.walk(root_dir):  # search all directories under the root_dir
+        for file in files:
+            if file.endswith(".jpg"):
+                file_path = os.path.join(root, file) # current image file path
+                folders = file_path.split('/') # split char = [Window : \\ , Others : /]
+                height=0
+                width=0
+                channels=0
+
+                # For _. files, please remove the following two lines.
+                img = cv2.imread(file_path)
+                height, width, channels = img.shape
+
+                if any(word in file_path.lower() for word in ["test"]): 
+                    if "live" in file_path.lower():   
+                        list_file = folders[1] + "-TEST-REAL.txt"
+                        face_labe="0"
+                    elif "spoof" in file_path.lower():
+                        list_file = folders[1] + "-TEST-FAKE.txt"
+                        face_labe="1"
+                elif any(word in file_path.lower() for word in ["train","dev"]): 
+                    if "live" in file_path.lower():   
+                        list_file = folders[1] + "-TRAIN-REAL.txt"
+                        face_labe="0"
+                    elif "spoof" in file_path.lower():
+                        list_file = folders[1] + "-TRAIN-FAKE.txt"
+                        face_labe="1"
+
+                with open("data_list/"+list_file, "a") as f:
+                    f.write(file_path + "," + face_labe + "," + str(height) + "," + str(width) +"\n")     
+    return True
+
 
 def parse_data_list(data_list_path):
     data_file_list = []
     face_labels = []
-
+    
     with open(data_list_path, 'r') as f:
         lines = f.readlines()
+
 
     for line in lines:
         line = line.strip()  # 줄바꿈 제거
@@ -98,27 +146,27 @@ def get_data_loader(config):
 if __name__ == '__main__':
     batch_size = 4
     num_workers = 2
-
-    face_dataset_dir = '/home/rizhao/data/FAS/all_public_datasets_zip/EXT0.0/'
-
-
-
-    transform =  transforms.Compose(
-            [
-                transforms.ToPILImage(),
-                transforms.Resize((256,256)),
-                transforms.ToTensor()
-            ]
-        )
+    make_data_list('FAS_data')
+    # face_dataset_dir = '/home/rizhao/data/FAS/all_public_datasets_zip/EXT0.0/'
+    # face_dataset_dir = 'FAS_data'
 
 
-    dataset_cls = zip_dataset.ZipDatasetPixelFPN
+    # transform =  transforms.Compose(
+    #         [
+    #             transforms.ToPILImage(),
+    #             transforms.Resize((256,256)),
+    #             transforms.ToTensor()
+    #         ]
+    #     )
 
-    test_dataset = get_dataset_from_list('data_list/debug.csv', dataset_cls, transform, root_dir=face_dataset_dir)
-    test_data_loader = torch.utils.data.DataLoader(test_dataset, batch_size, num_workers=num_workers,
-                                                   shuffle=False, pin_memory=True, drop_last=True)
 
-    data_iterator = iter(test_data_loader)
+    # dataset_cls = zip_dataset.ZipDatasetPixelFPN
 
-    data = data_iterator.next()
-    import pdb; pdb.set_trace()
+    # test_dataset = get_dataset_from_list('debug.csv', dataset_cls, transform, root_dir=face_dataset_dir)
+    # test_data_loader = torch.utils.data.DataLoader(test_dataset, batch_size, num_workers=num_workers,
+    #                                                shuffle=False, pin_memory=True, drop_last=True)
+
+    # data_iterator = iter(test_data_loader)
+
+    # data = data_iterator.next()
+    # import pdb; pdb.set_trace()
