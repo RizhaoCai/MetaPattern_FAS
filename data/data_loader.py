@@ -8,54 +8,41 @@ import zip_dataset
 from transforms import VisualTransform, get_augmentation_transforms
 import torchvision.transforms as transforms
 import logging
-import cv2
+from glob import glob
 
 import pdb
 
-def make_data_list(data_path):
+def make_data_list(root_dir, save_path, domain_list):
     """
     1.FAS_data 하위의 모든 jpg 파일들을 아래와 같이 분류 합니다.
       test = TEST
       dev,train = TRAIN
-      live = REAL
-      spoof = FAKE
     2.data_list 파일들의 내용은 아래와 같은 포맷으로 저장 됩니다.
-      file_path,face_label,height, width
-    3.예제의 ._로 시작하는 파일에는 오류를 발생합니다(이미지포맷이 지원하지 않음)
-      만일 ._ 파일을 사용해야하는 경우 주석을 참고하여 2개의 라인을 삭제하세요.
+      file_path
     """
-    root_dir = "FAS_data"
-    for root, _, files in os.walk(root_dir):  # search all directories under the root_dir
-        for file in files:
-            if file.endswith(".jpg"):
-                file_path = os.path.join(root, file) # current image file path
-                folders = file_path.split('/') # split char = [Window : \\ , Others : /]
-                height=0
-                width=0
-                channels=0
 
-                # For _. files, please remove the following two lines.
-                img = cv2.imread(file_path)
-                height, width, channels = img.shape
+    ext = ["jpg", "jpeg", "png", "webp", ".pt"]
+    
+    total_list = []
+    
+    for domain in domain_list:
+        data_path = os.path.join(root_dir, domain)
+        for extension in ext:
+            total_list += glob(f"{data_path}/**/*.{extension}", recursive=True)
 
-                if any(word in file_path.lower() for word in ["test"]): 
-                    if "live" in file_path.lower():   
-                        list_file = folders[1] + "-TEST-REAL.txt"
-                        face_labe="0"
-                    elif "spoof" in file_path.lower():
-                        list_file = folders[1] + "-TEST-FAKE.txt"
-                        face_labe="1"
-                elif any(word in file_path.lower() for word in ["train","dev"]): 
-                    if "live" in file_path.lower():   
-                        list_file = folders[1] + "-TRAIN-REAL.txt"
-                        face_labe="0"
-                    elif "spoof" in file_path.lower():
-                        list_file = folders[1] + "-TRAIN-FAKE.txt"
-                        face_labe="1"
+        train_img_list = [file for file in total_list if "test" not in file]
+        test_img_list = [file for file in total_list if "test" in file]
+        
+        train_img_list = [file.replace(root_dir + os.sep, "") for file in train_img_list]
+        test_img_list = [file.replace(root_dir + os.sep, "") for file in test_img_list]                
 
-                with open("data_list/"+list_file, "a") as f:
-                    f.write(file_path + "," + face_labe + "," + str(height) + "," + str(width) +"\n")     
-    return True
+        with open(os.path.join(save_path, f"{domain}-train.txt"), "w") as f:
+            for l in sorted(train_img_list):
+                f.write(f"{l}\n")
+
+        with open(os.path.join(save_path, f"{domain}-test.txt"), "w") as f:
+            for l in sorted(test_img_list):
+                f.write(f"{l}\n")   
 
 
 def parse_data_list(data_list_path):
@@ -67,8 +54,8 @@ def parse_data_list(data_list_path):
 
 
     for line in lines:
-        line = line.strip()  # 줄바꿈 제거
-        if not line:  # 빈 줄 건너뜀
+        line = line.strip()  
+        if not line:  
             continue
 
         file_path = line
@@ -146,9 +133,10 @@ def get_data_loader(config):
 if __name__ == '__main__':
     batch_size = 4
     num_workers = 2
-    make_data_list('FAS_data')
-    # face_dataset_dir = '/home/rizhao/data/FAS/all_public_datasets_zip/EXT0.0/'
-    # face_dataset_dir = 'FAS_data'
+    YOUR_DATA_ROOT = "your_data_root"
+    YOUR_SAVE_PATH = "your_list_save_path"
+    DOMAIN_LIST = ['OULU-NPU', 'MSU-MFSD', 'CASIA_faceAntisp', 'Replay']
+    make_data_list(YOUR_DATA_ROOT, YOUR_SAVE_PATH, DOMAIN_LIST)
 
 
     # transform =  transforms.Compose(
