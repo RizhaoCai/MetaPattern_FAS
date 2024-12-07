@@ -105,18 +105,59 @@ def metric_report_from_dict(scores_pred_dict, scores_gt_dict, thr):
     return frame_metrics, video_metrics
 
 
-def metric_report(scores_pred, scores_gt, thr):
+# def metric_report(scores_pred, scores_gt, thr):
 
-    fpr, tpr, threshold = metrics.roc_curve(scores_gt, scores_pred)
+#     fpr, tpr, threshold = metrics.roc_curve(scores_gt, scores_pred)
+#     auc = metrics.auc(fpr, tpr)
+
+#     eer, eer_thr = get_eer_stats(scores_pred, scores_gt)
+#     hter, far, frr = get_hter_at_thr(scores_pred, scores_gt, thr)
+#     hter05, far05, frr05 = get_hter_at_thr(scores_pred, scores_gt, 0.5)
+#     min_hter, hter_thr, far_at_thr, frr_at_thr = get_min_hter(scores_pred, scores_gt)
+
+#     metric_dict = {
+#         'AUC':auc,
+#         'EER': eer,
+#         'EER_THR': eer_thr,
+#         'HTER@THR': hter,
+#         'FAR@THR': far,
+#         'FRR@THR': frr,
+#         'THR': thr,
+#         'HTER@0.5': hter05,
+#         'FAR@0.5': far05,
+#         'FRR@0.5': frr05,
+#         'MIN_HTER': min_hter,
+#         'MIN_HTER_THR': hter_thr,
+#         'MIN_FAR_THR': far_at_thr,
+#         'MIN_FRR_THR': frr_at_thr,
+
+#     }
+#     return metric_dict
+
+def metric_report(scores_pred, scores_gt, thr):
+    import numpy as np
+    from sklearn import metrics
+
+    # Ensure binary format for scores_gt
+    scores_gt = np.array(scores_gt)
+    scores_pred = np.array(scores_pred)
+
+    # Convert scores_gt to binary (0 or 1) if not already
+    if not np.array_equal(scores_gt, scores_gt.astype(bool)):
+        scores_gt = np.where(scores_gt > 0.5, 1, 0)
+
+    # Calculate ROC and AUC
+    fpr, tpr, threshold = metrics.roc_curve(scores_gt, scores_pred, pos_label=1)
     auc = metrics.auc(fpr, tpr)
 
+    # Calculate other metrics
     eer, eer_thr = get_eer_stats(scores_pred, scores_gt)
     hter, far, frr = get_hter_at_thr(scores_pred, scores_gt, thr)
     hter05, far05, frr05 = get_hter_at_thr(scores_pred, scores_gt, 0.5)
     min_hter, hter_thr, far_at_thr, frr_at_thr = get_min_hter(scores_pred, scores_gt)
 
     metric_dict = {
-        'AUC':auc,
+        'AUC': auc,
         'EER': eer,
         'EER_THR': eer_thr,
         'HTER@THR': hter,
@@ -130,7 +171,6 @@ def metric_report(scores_pred, scores_gt, thr):
         'MIN_HTER_THR': hter_thr,
         'MIN_FAR_THR': far_at_thr,
         'MIN_FRR_THR': frr_at_thr,
-
     }
     return metric_dict
 
