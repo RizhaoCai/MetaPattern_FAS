@@ -14,12 +14,19 @@ import logging
 from data.transforms import VisualTransform, get_augmentation_transforms
 from data.data_loader import get_dataset_from_list
 import importlib
-from test import metric_report_from_dict
+from test_utils import metric_report_from_dict
+import warnings
+from sklearn.exceptions import UndefinedMetricWarning
+import sys
+warnings.filterwarnings("ignore", category=FutureWarning)
+warnings.filterwarnings("ignore", category=UndefinedMetricWarning)
 
-#try:
-#from torch.utils.tensorboard import SummaryWriter
-#except:
-from tensorboardX import SummaryWriter
+
+try:
+    from torch.utils.tensorboard import SummaryWriter
+except:
+    from tensorboardX import SummaryWriter
+
 
 
 class BaseTrainer(object):
