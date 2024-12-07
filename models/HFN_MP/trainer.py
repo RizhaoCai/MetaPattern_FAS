@@ -19,6 +19,17 @@ from itertools import chain
 from tensorboardX import SummaryWriter
 
 from torchvision.transforms import Normalize
+import sys
+
+logging.basicConfig(
+            level=logging.INFO,  # Set to INFO or DEBUG to see the messages
+            format='%(asctime)s - %(levelname)s - %(message)s',  # Format for clarity
+            datefmt='%Y-%m-%d %H:%M:%S',  # Optional: timestamp
+            handlers=[
+                        logging.StreamHandler(sys.stdout),  # Logs to console
+                        logging.FileHandler("./logging.log")  # Logs to file
+                    ]
+        )
 
 
 class Trainer(BaseTrainer):
@@ -243,7 +254,7 @@ class Trainer(BaseTrainer):
 
                 image_meta_test = image_meta_test.cuda()
                 label_meta_test = label_meta_test.cuda()
-                depth_meta_test = [d.cuda() for d in depth_meta_test]
+                depth_meta_test = [d.cuda() for d in depth_meta_test] #.cuda()
 
                 img_colored, reconstruct_rgb = self.pattern_extractor(image_meta_test)
                 # TODO: Get regulation loss for the output img_color, such as MMD, or PCA, KL Divergence
@@ -271,7 +282,7 @@ class Trainer(BaseTrainer):
                 meta_train_loader_list_fake)
             image_meta_train = image_meta_train.cuda()
             label_meta_train = label_meta_train.cuda()
-            depth_meta_train = [d.cuda() for d in depth_meta_train]
+            depth_meta_train = [d.cuda() for d in depth_meta_train] #.cuda() 
 
             img_colored, _ = self.pattern_extractor(image_meta_train)
 
@@ -330,7 +341,7 @@ class Trainer(BaseTrainer):
         self.hfn = HierachicalFusionNetwork().cuda()
         if self.config.TRAIN.IMAGENET_PRETRAIN:
             logging.info("Loading ImageNet Pretrain")
-            imagenet_pretrain = torch.load('models/MetaTexFPNv6_1/net.pth')
+            imagenet_pretrain = torch.load('models/HFN_MP/hfn_pretrain.pth')
             self.hfn.load_state_dict(imagenet_pretrain)
 
         # Get hyperparameters
@@ -422,7 +433,7 @@ class Trainer(BaseTrainer):
                 train_loader_list_fake)
 
             image_meta_train = image_meta_train.cuda()
-            depth_meta_train = [d.cuda() for d in depth_meta_train]
+            depth_meta_train = [d.cuda() for d in depth_meta_train] #.cuda()
 
             # Target Network does the inference with image_meta_train
             img_colored, _ = self.pattern_extractor(image_meta_train,)
@@ -494,7 +505,7 @@ class Trainer(BaseTrainer):
         self.hfn = HierachicalFusionNetwork().cuda()
         if self.config.TRAIN.IMAGENET_PRETRAIN:
             logging.info("Loading ImageNet Pretrain")
-            imagenet_pretrain = torch.load('models/MetaTexFPNv6_1/net.pth')
+            imagenet_pretrain = torch.load('models/HFN_MP/hfn_pretrain.pth')
             self.hfn.load_state_dict(imagenet_pretrain)
 
 
@@ -591,14 +602,13 @@ class Trainer(BaseTrainer):
                 train_loader_list_fake)
 
             image_meta_train = image_meta_train.cuda()
-            depth_meta_train = [d.cuda() for d in depth_meta_train]
-
+            depth_meta_train = [d.cuda() for d in depth_meta_train] #.cuda()
             # Target Network does the inference with image_meta_train
-            img_colored, _ = self.pattern_extractor(image_meta_train, img_colored)
+            img_colored, _ = self.pattern_extractor(image_meta_train, )
 
 
             # Calculate meta-train loss
-            depth_pred, cls_preds = self.hfn(image_meta_train)  # TODO
+            depth_pred, cls_preds = self.hfn(image_meta_train, img_colored)  # TODO
 
             mse_loss = criterionDepth(depth_pred[0].squeeze(), depth_meta_train[0])
             cls_loss = criterionCLS(cls_preds[0], label_meta_train.cuda())
@@ -671,7 +681,7 @@ class Trainer(BaseTrainer):
 
                 map_targets, face_targets = target['pixel_maps'], target['face_label'].cuda()
 
-                map_targets = [x.cuda() for x in map_targets]
+                map_targets = [x.cuda() for x in map_targets] #.cuda()
 
                 network_input = network_input.cuda()
                 img_colored, _ = self.pattern_extractor(network_input)
@@ -718,19 +728,33 @@ class Trainer(BaseTrainer):
 
 
 def get_data_from_pair_loaders(real_loader, fake_loader):
+    # try:
+    #     _, img_real, target_real, _ = real_loader['iterator'].next()
+    # except:
+    #     real_loader['iterator'] = iter(real_loader['data_loader'])
+    #     _, img_real, target_real, _ = real_loader['iterator'].next()
     try:
-        _, img_real, target_real, _ = real_loader['iterator'].next()
-    except:
+    # Use the built-in `next()` function
+        _, img_real, target_real, _ = next(real_loader['iterator'])
+    except StopIteration:
+    # Reset the iterator if StopIteration is raised
         real_loader['iterator'] = iter(real_loader['data_loader'])
-        _, img_real, target_real, _ = real_loader['iterator'].next()
+        _, img_real, target_real, _ = next(real_loader['iterator'])
     label_real = target_real['face_label'].cuda()
     pixel_maps_real = target_real['pixel_maps']
 
+    # try:
+    #     _, img_fake, target_fake, _ = fake_loader['iterator'].next()
+    # except:
+    #     fake_loader['iterator'] = iter(fake_loader['data_loader'])
+    #     _, img_fake, target_fake, _ = fake_loader['iterator'].next()
     try:
-        _, img_fake, target_fake, _ = fake_loader['iterator'].next()
-    except:
+        # Use Python's built-in next() function
+        _, img_fake, target_fake, _ = next(fake_loader['iterator'])
+    except StopIteration:
+        # Reset the iterator if StopIteration is raised
         fake_loader['iterator'] = iter(fake_loader['data_loader'])
-        _, img_fake, target_fake, _ = fake_loader['iterator'].next()
+        _, img_fake, target_fake, _ = next(fake_loader['iterator'])
 
     label_fake = target_fake['face_label'].cuda()
     pixel_maps_fake = target_fake['pixel_maps']
