@@ -71,10 +71,13 @@ def get_min_hter(scores, labels, grid_density = 100000):
 
 def get_hter_at_thr(scores, labels, thr):
     TN, FN, FP, TP = eval_stat(scores, labels, thr)
-    far = FP / float(TN + FP)   
-    frr = FN / float(TP + FN)
+    
+    # Avoid division by zero
+    far = FP / float(TN + FP) if TN + FP != 0 else 0.0
+    frr = FN / float(TP + FN) if TP + FN != 0 else 0.0
+    
     hter = (far + frr) / 2.0
-    return hter,far,frr
+    return hter, far, frr
 
 def get_accuracy(scores, labels, thr):
     TN, FN, FP, TP = eval_stat(scores, labels, thr)
