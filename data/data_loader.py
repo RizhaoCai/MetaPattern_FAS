@@ -8,19 +8,54 @@ import zip_dataset
 from transforms import VisualTransform, get_augmentation_transforms
 import torchvision.transforms as transforms
 import logging
+from glob import glob
 
 import pdb
+
+def make_data_list(root_dir, save_path, domain_list):
+    """
+    1.FAS_data 하위의 모든 jpg 파일들을 아래와 같이 분류 합니다.
+      test = TEST
+      dev,train = TRAIN
+    2.data_list 파일들의 내용은 아래와 같은 포맷으로 저장 됩니다.
+      file_path
+    """
+
+    ext = ["jpg", "jpeg", "png", "webp", ".pt"]
+    
+    total_list = []
+    
+    for domain in domain_list:
+        data_path = os.path.join(root_dir, domain)
+        for extension in ext:
+            total_list += glob(f"{data_path}/**/*.{extension}", recursive=True)
+
+        train_img_list = [file for file in total_list if "test" not in file]
+        test_img_list = [file for file in total_list if "test" in file]
+        
+        train_img_list = [file.replace(root_dir + os.sep, "") for file in train_img_list]
+        test_img_list = [file.replace(root_dir + os.sep, "") for file in test_img_list]                
+
+        with open(os.path.join(save_path, f"{domain}-train.txt"), "w") as f:
+            for l in sorted(train_img_list):
+                f.write(f"{l}\n")
+
+        with open(os.path.join(save_path, f"{domain}-test.txt"), "w") as f:
+            for l in sorted(test_img_list):
+                f.write(f"{l}\n")   
+
 
 def parse_data_list(data_list_path):
     data_file_list = []
     face_labels = []
-
+    
     with open(data_list_path, 'r') as f:
         lines = f.readlines()
 
+
     for line in lines:
-        line = line.strip()  # 줄바꿈 제거
-        if not line:  # 빈 줄 건너뜀
+        line = line.strip()  
+        if not line:  
             continue
 
         file_path = line
@@ -98,27 +133,28 @@ def get_data_loader(config):
 if __name__ == '__main__':
     batch_size = 4
     num_workers = 2
-
-    face_dataset_dir = '/home/rizhao/data/FAS/all_public_datasets_zip/EXT0.0/'
-
-
-
-    transform =  transforms.Compose(
-            [
-                transforms.ToPILImage(),
-                transforms.Resize((256,256)),
-                transforms.ToTensor()
-            ]
-        )
+    YOUR_DATA_ROOT = "your_data_root"
+    YOUR_SAVE_PATH = "your_list_save_path"
+    DOMAIN_LIST = ['OULU-NPU', 'MSU-MFSD', 'CASIA_faceAntisp', 'Replay']
+    make_data_list(YOUR_DATA_ROOT, YOUR_SAVE_PATH, DOMAIN_LIST)
 
 
-    dataset_cls = zip_dataset.ZipDatasetPixelFPN
+    # transform =  transforms.Compose(
+    #         [
+    #             transforms.ToPILImage(),
+    #             transforms.Resize((256,256)),
+    #             transforms.ToTensor()
+    #         ]
+    #     )
 
-    test_dataset = get_dataset_from_list('data_list/debug.csv', dataset_cls, transform, root_dir=face_dataset_dir)
-    test_data_loader = torch.utils.data.DataLoader(test_dataset, batch_size, num_workers=num_workers,
-                                                   shuffle=False, pin_memory=True, drop_last=True)
 
-    data_iterator = iter(test_data_loader)
+    # dataset_cls = zip_dataset.ZipDatasetPixelFPN
 
-    data = data_iterator.next()
-    import pdb; pdb.set_trace()
+    # test_dataset = get_dataset_from_list('debug.csv', dataset_cls, transform, root_dir=face_dataset_dir)
+    # test_data_loader = torch.utils.data.DataLoader(test_dataset, batch_size, num_workers=num_workers,
+    #                                                shuffle=False, pin_memory=True, drop_last=True)
+
+    # data_iterator = iter(test_data_loader)
+
+    # data = data_iterator.next()
+    # import pdb; pdb.set_trace()
