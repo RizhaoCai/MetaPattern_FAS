@@ -8,12 +8,14 @@ import torch
 from PIL import Image
 from torch.utils.data import DataLoader
 from torchvision import transforms as T
+from torchvision.transforms import ToTensor
 
 from data.data_loader import parse_data_list
 from data.transforms import VisualTransform
 from data.transforms import get_augmentation_transforms
 from data.zip_dataset import ZipDataset as _ZipDataset
 import functools
+
 
 class ZipDataset(torch.utils.data.Dataset):
     def __init__(self, folder_path, face_label, transforms=None, num_frames=1, train=True):
@@ -112,54 +114,103 @@ class ZipDatasetPixelMC(ZipDataset):
         return index, channels, target, self.folder_path
 
 
+# def channel_list(bgr_im, config=None):
+#     channel_list = []
+#     if config.MODEL.CHANNELS.RGB:
+#         channel_list.append(bgr_im)
+#     if config.MODEL.CHANNELS.HSV:
+#         img_hsv = cv2.cvtColor(bgr_im, cv2.COLOR_BGR2HSV)
+#         channel_list.append(img_hsv)
+
+#     if config.MODEL.CHANNELS.YCRCB:
+#         img_ycrcb = cv2.cvtColor(bgr_im, cv2.COLOR_BGR2YCrCb)
+
+#         channel_list.append(img_ycrcb)
+
+#     if config.MODEL.CHANNELS.LAB:
+#         lab_image = cv2.cvtColor(bgr_im, cv2.COLOR_BGR2LAB)
+#         channel_list.append(lab_image)
+
+#     if config.MODEL.CHANNELS.YUV:
+#         yuv_image = cv2.cvtColor(bgr_im, cv2.COLOR_BGR2YUV)
+#         channel_list.append(yuv_image)
+
+#     if config.MODEL.CHANNELS.XYZ:
+#         xyz_image = cv2.cvtColor(bgr_im, cv2.COLOR_BGR2XYZ)
+#         channel_list.append(xyz_image)
+
+#     return channel_list
+
+
+
 def channel_list(bgr_im, config=None):
+    """
+    Convert and return a list of image channels as Tensors.
+    """
     channel_list = []
+    to_tensor = ToTensor()  # Convert PIL.Image to Tensor
+
+    # Ensure input is a NumPy array if not already
+    if isinstance(bgr_im, Image.Image):
+        bgr_im = np.array(bgr_im)  # Convert PIL.Image.Image to NumPy array
+
     if config.MODEL.CHANNELS.RGB:
-        channel_list.append(bgr_im)
+        rgb_image = cv2.cvtColor(bgr_im, cv2.COLOR_BGR2RGB)
+        channel_list.append(to_tensor(Image.fromarray(rgb_image)))
     if config.MODEL.CHANNELS.HSV:
         img_hsv = cv2.cvtColor(bgr_im, cv2.COLOR_BGR2HSV)
-        channel_list.append(img_hsv)
-
+        channel_list.append(to_tensor(Image.fromarray(img_hsv)))
     if config.MODEL.CHANNELS.YCRCB:
         img_ycrcb = cv2.cvtColor(bgr_im, cv2.COLOR_BGR2YCrCb)
-
-        channel_list.append(img_ycrcb)
-
+        channel_list.append(to_tensor(Image.fromarray(img_ycrcb)))
     if config.MODEL.CHANNELS.LAB:
         lab_image = cv2.cvtColor(bgr_im, cv2.COLOR_BGR2LAB)
-        channel_list.append(lab_image)
-
+        channel_list.append(to_tensor(Image.fromarray(lab_image)))
     if config.MODEL.CHANNELS.YUV:
         yuv_image = cv2.cvtColor(bgr_im, cv2.COLOR_BGR2YUV)
-        channel_list.append(yuv_image)
-
+        channel_list.append(to_tensor(Image.fromarray(yuv_image)))
     if config.MODEL.CHANNELS.XYZ:
         xyz_image = cv2.cvtColor(bgr_im, cv2.COLOR_BGR2XYZ)
-        channel_list.append(xyz_image)
+        channel_list.append(to_tensor(Image.fromarray(xyz_image)))
 
     return channel_list
 
-
-def get_dataset_from_list(data_list_path, dataset_cls, train=True, transform=None, num_frames=1, root_dir='', ):
+def get_dataset_from_list(data_list_path, dataset_cls, train=True, transform=None, num_frames=1, root_dir=''):
     data_file_list, face_labels = parse_data_list(data_list_path)
-
-    num_file = data_file_list.size
     dataset_list = []
+    for i, file_entry in enumerate(data_file_list):
+        # Split file entry to extract the actual file path
+        file_path = file_entry.split(',')[0]
+        folder_path = os.path.dirname(file_path)  # Extract the folder containing the file
+        total_path = os.path.abspath(folder_path)  # Use the absolute path
+        
+        # Debugging: Print paths for verification
+        # print(f"Processing file: {file_path}")
+        # print(f"Total folder path: {total_path}")
 
-    for i in range(num_file):
-        face_label = int(face_labels.get(i)==0) # 0 means real face and non-zero represents spoof
-        file_path = data_file_list.get(i)
-        total_path = os.path.join(file_path, root_dir)
         if not os.path.exists(total_path):
-            logging.warning("Skip {} (not exists)".format(total_path))
+            print(f"Skip {total_path} (not exists)")
+            continue
+
+        # Create the dataset object
+        face_label = int(face_labels[i] == 0)  # 0 means real face, non-zero is spoof
+        try:
+            dataset = dataset_cls(total_path, face_label, transform, num_frames=num_frames)
+        except Exception as e:
+            print(f"Error creating dataset for {total_path}: {e}")
+            continue
+
+        if len(dataset) == 0:
+            print(f"Skip {total_path} (zero elements)")
             continue
         else:
-            dataset = dataset_cls(total_path, face_label, transform, num_frames=num_frames)
-            if len(dataset) == 0:
-                logging.warning("Skip {} (zero elements)".format(total_path))
-                continue
-            else:
-                dataset_list.append(dataset)
+            dataset_list.append(dataset)
+
+    if not dataset_list:
+        print("No valid datasets found.")
+        return None
+
+    # Concatenate all datasets
     final_dataset = torch.utils.data.ConcatDataset(dataset_list)
     return final_dataset
 
