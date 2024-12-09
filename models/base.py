@@ -22,10 +22,10 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=UndefinedMetricWarning)
 
 
-try:
-    from torch.utils.tensorboard import SummaryWriter
-except:
-    from tensorboardX import SummaryWriter
+# try:
+#     # from torch.utils.tensorboard import SummaryWriter
+# except:
+#     # from tensorboardX import SummaryWriter
 
 
 
@@ -138,9 +138,9 @@ class BaseTrainer(object):
 
         train_data_loader = self.train_data_loader
         val_data_loader = self.val_data_loader
-        tensorboard_dir = os.path.join(self.config.OUTPUT_DIR, "tensorboard")
-        os.makedirs(tensorboard_dir, exist_ok=True)
-        self.tensorboard = None if self.config.DEBUG else SummaryWriter(tensorboard_dir)
+        # # tensorboard_dir = os.path.join(self.config.OUTPUT_DIR, "tensorboard")
+        # os.makedirs(tensorboard_dir, exist_ok=True)
+        # # self.tensorboard = None if self.config.DEBUG else SummaryWriter(tensorboard_dir)
 
         self.num_train = len(train_data_loader) * self.config.DATA.BATCH_SIZE
         self.num_valid = len(val_data_loader) * self.config.DATA.BATCH_SIZE
@@ -156,8 +156,8 @@ class BaseTrainer(object):
             self.network = torch.nn.DataParallel(self.network)
 
         for epoch in range(self.start_epoch, self.epochs + 1):
-            if self.tensorboard:
-                self.tensorboard.add_scalar('lr', self.init_lr, self.global_step)
+            # if self.tensorboard:
+                # self.tensorboard.add_scalar('lr', self.init_lr, self.global_step)
             logging.info('\nEpoch: {}/{} - LR: {:.6f}'.format(
                 epoch, self.epochs, self.init_lr))
 
@@ -182,8 +182,8 @@ class BaseTrainer(object):
                     pbar.update(self.batch_size)
                     train_loss.update(loss.item(), self.batch_size)
                     # log to tensorboard
-                    if self.tensorboard:
-                        self.tensorboard.add_scalar('loss/train_total', loss.item(), self.global_step)
+                    # if self.tensorboard:
+                        # self.tensorboard.add_scalar('loss/train_total', loss.item(), self.global_step)
 
                     self.global_step += 1
 
@@ -235,8 +235,8 @@ class BaseTrainer(object):
         scores_gt_dict = val_results['scores_gt']
         scores_pred_dict = val_results['scores_pred']
         # log to tensorboard
-        if self.tensorboard:
-            self.tensorboard.add_scalar('loss/val_total', val_loss, self.global_step)
+        # if self.tensorboard:
+            # self.tensorboard.add_scalar('loss/val_total', val_loss, self.global_step)
 
         frame_metric_dict, video_metric_dict = metric_report_from_dict(scores_pred_dict, scores_gt_dict, 0.5)
         df_frame = pd.DataFrame(frame_metric_dict, index=[0])

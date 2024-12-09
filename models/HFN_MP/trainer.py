@@ -16,7 +16,7 @@ from itertools import chain
 #try:
 #    from torch.utils.tensorboard import SummaryWriter
 #except:
-from tensorboardX import SummaryWriter
+# from tensorboardX import SummaryWriter
 
 from torchvision.transforms import Normalize
 import sys
@@ -92,7 +92,7 @@ class Trainer(BaseTrainer):
                 ckpt_path, ckpt['epoch'])
         )
 
-    def meta_train(self):
+    def meta_train(self, hfn=None, pattern_extractor=None):
         """
 
             Meta-train and test:
@@ -111,20 +111,23 @@ class Trainer(BaseTrainer):
         metatrainsize = self.config.TRAIN.META_TRAIN_SIZE  # 2
         # Get network
 
-        self.pattern_extractor.train()
+        # self.pattern_extractor.train()
         # Pretrain?
+        if hfn is not None:
+            self.hfn = hfn
+        if pattern_extractor is not None:
+            self.pattern_extractor = pattern_extractor
 
-
-        if self.config.TRAIN.IMAGENET_PRETRAIN:
+        # if self.config.TRAIN.IMAGENET_PRETRAIN:
             
-            pretrain_model_path = 'models/HFN_MP/hfn_pretrain.pth'
-            logging.info("Loading ImageNet Pretrain")
-            if not os.path.exists(pretrain_model_path):
-                get_state_dict() 
-            imagenet_pretrain = torch.load(pretrain_model_path)
-            self.hfn.load_state_dict(imagenet_pretrain, strict=False)
+        #     pretrain_model_path = 'models/HFN_MP/hfn_pretrain.pth'
+        #     logging.info("Loading ImageNet Pretrain")
+        #     if not os.path.exists(pretrain_model_path):
+        #         get_state_dict() 
+        #     imagenet_pretrain = torch.load(pretrain_model_path)
+        #     self.hfn.load_state_dict(imagenet_pretrain, strict=False)
 
-        self.hfn.train()
+        # self.hfn.train()
         self.pattern_extractor.cuda()
 
         # criterionCls = nn.CrossEntropyLoss()
@@ -173,9 +176,9 @@ class Trainer(BaseTrainer):
                 last_epoch=self.config.TRAIN.LR_SCHEDULER.CosineAnnealingLR.last_epoch,
         )
 
-        tensorboard_dir = os.path.join(self.config.OUTPUT_DIR, "tensorboard")
-        os.makedirs(tensorboard_dir, exist_ok=True)
-        self.tensorboard = None if self.config.DEBUG else SummaryWriter(tensorboard_dir)
+        # tensorboard_dir = os.path.join(self.config.OUTPUT_DIR, "tensorboard")
+        # os.makedirs(tensorboard_dir, exist_ok=True)
+        # self.tensorboard = None if self.config.DEBUG else SummaryWriter(tensorboard_dir)
 
         src1_train_dataloader_fake, src1_train_dataloader_real, \
         src2_train_dataloader_fake, src2_train_dataloader_real, \
@@ -328,9 +331,9 @@ class Trainer(BaseTrainer):
                 logging.info('Current Best MIN_HTER={}%, AUC={}%'.format(100 * self.val_metrcis['MIN_HTER'],
                                                                          100 * self.val_metrcis['AUC']))
 
-            self.pattern_extractor.train()
-            self.hfn.train()
-            return self.pattern_extractor
+            # self.pattern_extractor.train()
+            # self.hfn.train()
+        return self.pattern_extractor
 
     def sync_training(self):
         """
@@ -378,9 +381,9 @@ class Trainer(BaseTrainer):
         else:
             raise NotImplementedError
 
-        tensorboard_dir = os.path.join(self.config.OUTPUT_DIR, "tensorboard")
-        os.makedirs(tensorboard_dir, exist_ok=True)
-        self.tensorboard = None if self.config.DEBUG else SummaryWriter(tensorboard_dir)
+        # tensorboard_dir = os.path.join(self.config.OUTPUT_DIR, "tensorboard")
+        # os.makedirs(tensorboard_dir, exist_ok=True)
+        # self.tensorboard = None if self.config.DEBUG else SummaryWriter(tensorboard_dir)
 
         src1_train_dataloader_fake, src1_train_dataloader_real, \
         src2_train_dataloader_fake, src2_train_dataloader_real, \
@@ -507,7 +510,7 @@ class Trainer(BaseTrainer):
         state_dict = torch.load(ckpt_path)
         self.hfn = HierachicalFusionNetwork().cuda()
         if self.config.TRAIN.IMAGENET_PRETRAIN:
-            logging.info("Loading ImageNet Pretrain")
+            # logging.info("Loading ImageNet Pretrain")
             imagenet_pretrain = torch.load('models/HFN_MP/hfn_pretrain.pth')
             self.hfn.load_state_dict(imagenet_pretrain)
 
@@ -550,9 +553,9 @@ class Trainer(BaseTrainer):
         else:
             raise NotImplementedError
 
-        tensorboard_dir = os.path.join(self.config.OUTPUT_DIR, "tensorboard")
-        os.makedirs(tensorboard_dir, exist_ok=True)
-        self.tensorboard = None if self.config.DEBUG else SummaryWriter(tensorboard_dir)
+        # tensorboard_dir = os.path.join(self.config.OUTPUT_DIR, "tensorboard")
+        # os.makedirs(tensorboard_dir, exist_ok=True)
+        # self.tensorboard = None if self.config.DEBUG else SummaryWriter(tensorboard_dir)
 
         src1_train_dataloader_fake, src1_train_dataloader_real, \
         src2_train_dataloader_fake, src2_train_dataloader_real, \
