@@ -11,7 +11,8 @@ from copy import deepcopy
 
 from .trainer import Trainer, get_data_from_loader_list
 from .meta_network import MetaHierachicalFusionNetwork, MetaPatternExtractor
-
+from .network import get_state_dict
+import os
 class BaseMetaTrainer(Trainer): # 
     """Base class for meta-learning trainers"""
     def __init__(self, config):
@@ -28,7 +29,9 @@ class BaseMetaTrainer(Trainer): #
             "meta_loss": []
         }
         self._setup_training()
-        self.tensorboard = None
+        # self.tensorboard = None
+
+
 
     def _setup_training(self):
         self.criterionDepth = nn.MSELoss()
@@ -668,11 +671,27 @@ class MetaTrainerManager(Trainer):
         :param hfn_method: 'base', 'maml', 'reptile'
         """
         logging.info(f"Training pattern extractor with {pe_method}")
+        hfn = None
+        if self.config.TRAIN.IMAGENET_PRETRAIN:
+            pretrain_model_path = 'models/HFN_MP/hfn_pretrain.pth'
+            logging.info("Loading ImageNet Pretrain")
+            if not os.path.exists(pretrain_model_path):
+                get_state_dict() 
+            imagenet_pretrain = torch.load(pretrain_model_path)
+            hfn = MetaHierachicalFusionNetwork(
+                mean_std_normalize=self.config.MODEL.MEAN_STD_NORMAL,
+                dropout_rate=self.config.TRAIN.DROPOUT
+                ).cuda()
+            hfn.load_state_dict(imagenet_pretrain, strict=False)
+        if self.config.TRAIN.PRETRAIN_HFN:
+            hfn = self.pretrain_hfn(0, hfn)
+        logging.info(f"Training pattern extractor with {pe_method}")
         if pe_method == 'base':
-            pattern_extractor = self.meta_train()  
+            pe = MetaPatternExtractor().cuda()
+            pattern_extractor = self.meta_train(hfn=hfn, pattern_extractor=pe)  
         elif pe_method in ['maml', 'reptile']:
-            if self.config.TRAIN.PRETRAIN_HFN:
-                hfn = self.pretrain_hfn(0)
+            # if self.config.TRAIN.PRETRAIN_HFN:
+            #     hfn = self.pretrain_hfn(0, hfn)
                 # pass
             if hfn is None:
                 hfn = MetaHierachicalFusionNetwork(
@@ -688,29 +707,31 @@ class MetaTrainerManager(Trainer):
         
         logging.info(f"Training HFN with {hfn_method}")
         if hfn_method == 'base':
-            hfn = self.train_hfn_from_scratch()  
+            hfn = self.train_hfn_from_scratch(pattern_extractor)  
         elif hfn_method in ['maml', 'reptile']:
             hfn = self._train_hfn_with_custom_method('hfn', hfn_method, pattern_extractor)
         else:
             raise ValueError(f"Unknown HFN method: {hfn_method}")
         
-    def pretrain_hfn(self, data_num):
+    def pretrain_hfn(self, data_num, hfn = None):
         """
         HFN 사전 학습 함수
         :param data_num: 랜덤하게 선택한 데이터셋 번호
         """
+        if hfn is None:
+            hfn = MetaHierachicalFusionNetwork(
+                mean_std_normalize=self.config.MODEL.MEAN_STD_NORMAL,
+                dropout_rate=self.config.TRAIN.DROPOUT
+            ).cuda()
         logging.info(f"Pretraining HFN on dataset {data_num}")
         pattern_extractor = MetaPatternExtractor().cuda()
-        hfn = MetaHierachicalFusionNetwork(
-            mean_std_normalize=self.config.MODEL.MEAN_STD_NORMAL,
-            dropout_rate=self.config.TRAIN.DROPOUT
-        ).cuda()
+
         hfn_optimizer = optim.Adam(hfn.parameters(), lr=self.config.TRAIN.INIT_LR)
 
         # 손실 함수 초기화
         criterion_depth = nn.MSELoss()
         criterion_cls = nn.CrossEntropyLoss()
-        for iter_num in range(250):
+        for iter_num in range(self.config.TRAIN.PRETRAIN_ITER):
             # 랜덤한 데이터셋으로 task_data 로드
             task_data = get_data_from_loader_list(
                 [self.real_loaders[data_num]],
