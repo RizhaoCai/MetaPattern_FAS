@@ -330,6 +330,7 @@ class Trainer(BaseTrainer):
 
             self.pattern_extractor.train()
             self.hfn.train()
+            return self.pattern_extractor
 
     def sync_training(self):
         """
@@ -491,11 +492,13 @@ class Trainer(BaseTrainer):
 
 
 
-    def train_hfn_from_scratch(self):
+    def train_hfn_from_scratch(self, pattern_extractor=None):
         """
 
         :return:
         """
+        if pattern_extractor is not None:
+            self.pattern_extractor = pattern_extractor
         logging.info("train_hfn_from_scratch")
         ckpt_path = os.path.join(self.config.OUTPUT_DIR, 'ckpt/best.ckpt')
         if self.config.TRAIN.RESUME:
@@ -659,6 +662,7 @@ class Trainer(BaseTrainer):
 
             self.pattern_extractor.train()
             self.hfn.train()
+            return self.hfn
 
     def test(self, test_data_loader):
 
