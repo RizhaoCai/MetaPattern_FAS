@@ -254,7 +254,7 @@ def get_data_loader(config):
     tgt_test_data = get_dataset_from_list(tgt_test_data_list, Dataset, transform=test_data_transform, root_dir=root_dir, num_frames = config.TEST.NUM_FRAMES)
 
 
-    print('Load Target Data')
+    # print('Load Target Data')
 
     src1_train_dataloader_fake = DataLoader(src1_train_data_fake,
                                             batch_size=batch_size, shuffle=True)
